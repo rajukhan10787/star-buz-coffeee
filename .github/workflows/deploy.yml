@@ -1,14 +1,9 @@
-name: Deploy Static Site
+name: Deploy to Nginx Container
 
 on:
   push:
     branches:
       - main
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
 
 jobs:
   deploy:
@@ -18,13 +13,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+      # Stop & remove old container (if exists)
+      - name: Stop old container
+        run: |
+          docker stop my-nginx || true
+          docker rm my-nginx || true
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./   # because your build files already exist (index.html + assets)
+      # Run new nginx container
+      - name: Run Nginx container
+        run: |
+          docker run -d -p 82:80 --name my-nginx nginx
 
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
+      # Copy code into container
+      - name: Copy files to Nginx
+        run: |
+          docker cp . my-nginx:/usr/share/nginx/html/
+
+      # Restart container to reflect changes
+      - name: Restart container
+        run: |
+          docker restart my-nginx
